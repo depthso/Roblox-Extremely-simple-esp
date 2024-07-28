@@ -1,23 +1,37 @@
--- depso
+--// Written by depso
+local Players = game:GetService("Players")
 
-HightLightPlayer = function(Player)
-    --[[if Player.Team ~= game.Teams.Guards then
-        return
-    end]]
-    
+local function ApplyHighlight(Player)
+    local Connections = {}
+
+    --// Parts
     local Character = Player.Character or Player.CharacterAdded:Wait()
     local Humanoid = Character:WaitForChild("Humanoid")
     local HightLighter = Instance.new("Highlight", Character)
-    HightLighter.FillColor = (Player.TeamColor and Player.TeamColor.Color) or Color3.fromRGB(255, 48, 51)
-    
-    Humanoid.Changed:Connect(function()
-        if Humanoid.Health <= 0 then
-            HightLighter:Remove()
+
+    local function UpdateFillColor()
+        local DefaultColor = Color3.fromRGB(255, 48, 51)
+        HightLighter.FillColor = (Player.TeamColor and Player.TeamColor.Color) or DefaultColor
+    end
+
+    local function Disconnect()
+        HightLighter:Remove()
+        
+        for _, Connection in next, Connections do
+            Connection:Disconnect()
         end
-    end)
+    end
+
+    --// Connect functions to events
+    table.insert(Connections, Player:GetPropertyChangedSignal("TeamColor"):Connect(UpdateFillColor))
+    table.insert(Connections, Humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+        if Humanoid.Health <= 0 then
+            Disconnect()
+        end
+    end))
 end
 
-HightLightFunc = function(Player)
+local function HightLightPlayer(Player)
     if Player.Character then
         HightLightPlayer(Player)
     end
@@ -26,10 +40,8 @@ HightLightFunc = function(Player)
     end)
 end
 
-local Players = game:GetService("Players")
-for _, PLayer in next, Players:GetPlayers() do
-    HightLightFunc(PLayer)
+--// Apply highlights to players
+for _, Player in next, Players:GetPlayers() do
+    ApplyHighlight(Player)
 end
-Players.PlayerAdded:Connect(function(Player)
-    HightLightFunc(Player)
-end)
+Players.PlayerAdded:Connect(ApplyHighlight)
